@@ -36,10 +36,12 @@ class LoggingDecorator:
     """Декоратор логирования вызова функции."""
 
     def __init__(self, func):
+        """Инициализация экземпляра класса-декоратора."""
         update_wrapper(self, func)
         self.func = func
 
     def __call__(self, *args):
+        """Определение экземпляра объектом, поддерживающим вызов."""
         logging.info('Вызов функции %s with args %s', self.func.__name__, args)
         return self.func(*args)
 
