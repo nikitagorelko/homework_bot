@@ -19,7 +19,7 @@ load_dotenv()
 logging.basicConfig(
     level=logging.DEBUG,
     filename='homework.log',
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(levelname)s - %(funcName)s - %(message)s',
 )
 
 
@@ -42,7 +42,9 @@ class LoggingDecorator:
 
     def __call__(self, *args):
         """Определение экземпляра объектом, поддерживающим вызов."""
-        logging.info('Вызов функции %s with args %s', self.func.__name__, args)
+        logging.info(
+            'Вызов функции `%s` with args `%s`', self.func.__name__, args
+        )
         return self.func(*args)
 
 
@@ -67,8 +69,11 @@ class APIResponseDict(TypedDict):
 def check_tokens() -> bool:
     """Проверяет доступность переменных окружения."""
     tokens = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
-    TOKENS = ('PRACTICUM_TOKEN', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID')
-    missing_tokens = [token for token in TOKENS if token not in globals()]
+    missing_tokens = [
+        token
+        for token in ('PRACTICUM_TOKEN', 'TELEGRAM_TOKEN', 'TELEGRAM_CHAT_ID')
+        if globals().get(token)
+    ]
     if missing_tokens:
         logging.critical(
             'Отсутствие обязательных переменных окружения: %s',
@@ -86,10 +91,10 @@ def send_message(bot: telegram.Bot, message: str) -> None:
     """
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logging.debug('Сообщение отправлено')
-    except TelegramError as error:
-        logging.error(f'Сбой при отправки сообщения: {error}')
+    except TelegramError:
+        logging.exception('Сбой при отправки сообщения')
         raise TelegramError
+    logging.debug('Сообщение отправлено')
 
 
 @LoggingDecorator
@@ -114,8 +119,7 @@ def get_api_answer(timestamp: int) -> APIResponseDict:
         logging.exception('Сбой при запросе к API')
         raise error('Ошибка запроса к API')
 
-    status_code = response.status_code
-    if status_code != requests.codes.ok:
+    if response.status_code != requests.codes.ok:
         logging.error('Эндпоинт недоступен')
         raise InvalidResponseStatusException(
             f'Ошибочный код статуса ответа: {status_code}',
@@ -159,7 +163,7 @@ def parse_status(homework: HomeworkDict) -> str:
     """
     try:
         name, status = itemgetter('homework_name', 'status')(homework)
-        verdict = HOMEWORK_VERDICTS.get(homework.get('status'))
+        verdict = HOMEWORK_VERDICTS[homework['status']]
 
         if status not in HOMEWORK_VERDICTS:
             logging.error('Неожиданный статус домашней работы')
